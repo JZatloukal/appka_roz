@@ -512,6 +512,8 @@ def _write_analytics_event(event: dict[str, Any]) -> None:
 _analytics_queue: queue.Queue = queue.Queue()
 _analytics_last_error: str | None = None
 _analytics_written = 0
+_analytics_thread: threading.Thread | None = None
+_analytics_thread_lock = threading.Lock()
 
 
 def _analytics_worker() -> None:
@@ -528,7 +530,18 @@ def _analytics_worker() -> None:
             _analytics_queue.task_done()
 
 
-threading.Thread(target=_analytics_worker, daemon=True, name="analytics-writer").start()
+def _ensure_analytics_worker() -> None:
+    # vlakno se startuje az pri prvnim eventu: start pri importu neprezije
+    # fork gunicorn workeru (vlakno by zustalo v rodicovskem procesu)
+    global _analytics_thread
+    if _analytics_thread is not None and _analytics_thread.is_alive():
+        return
+    with _analytics_thread_lock:
+        if _analytics_thread is None or not _analytics_thread.is_alive():
+            _analytics_thread = threading.Thread(
+                target=_analytics_worker, daemon=True, name="analytics-writer"
+            )
+            _analytics_thread.start()
 
 
 def log_event(
@@ -565,6 +578,7 @@ def log_event(
                 }
             )
 
+        _ensure_analytics_worker()
         _analytics_queue.put(event)
     except Exception:
         app.logger.exception("Unable to queue analytics event: %s", event_type)
