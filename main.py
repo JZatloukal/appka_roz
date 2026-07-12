@@ -545,8 +545,9 @@ def save_sales() -> None:
             with db_connect() as conn:
                 with conn.cursor() as cur:
                     sale_ids = [int(sale["id"]) for sale in SALES]
-                    for sale in SALES:
-                        cur.execute(
+                    if SALES:
+                        # executemany posila radky v jedne davce - N dotazu po siti by bylo N x latence
+                        cur.executemany(
                             """
                             insert into sales (id, customer, amount, note, created_at)
                             values (%s, %s, %s, %s, %s)
@@ -556,13 +557,16 @@ def save_sales() -> None:
                                 note = excluded.note,
                                 created_at = excluded.created_at
                             """,
-                            (
-                                int(sale["id"]),
-                                sale["customer"],
-                                int(sale["amount"]),
-                                sale["note"],
-                                sale["created_at"],
-                            ),
+                            [
+                                (
+                                    int(sale["id"]),
+                                    sale["customer"],
+                                    int(sale["amount"]),
+                                    sale["note"],
+                                    sale["created_at"],
+                                )
+                                for sale in SALES
+                            ],
                         )
                     if sale_ids:
                         cur.execute("delete from sales where not (id = any(%s))", (sale_ids,))
@@ -639,32 +643,30 @@ def load_achievements() -> dict[str, dict[str, Any] | None]:
 def save_achievements() -> None:
     if db_enabled():
         try:
+            rows = []
+            for key, achievement in ACHIEVEMENTS.items():
+                if achievement is None:
+                    rows.append((key, None, None, None, None, jsonb({})))
+                    continue
+                metadata = {
+                    k: v
+                    for k, v in achievement.items()
+                    if k not in {"unlocked_at", "value", "minutes", "reflection"}
+                }
+                rows.append(
+                    (
+                        key,
+                        parse_datetime_value(achievement.get("unlocked_at")) if achievement.get("unlocked_at") else None,
+                        achievement.get("value"),
+                        achievement.get("minutes"),
+                        achievement.get("reflection"),
+                        jsonb(metadata),
+                    )
+                )
             with db_connect() as conn:
                 with conn.cursor() as cur:
-                    for key, achievement in ACHIEVEMENTS.items():
-                        if achievement is None:
-                            cur.execute(
-                                """
-                                insert into achievements
-                                    (achievement_key, unlocked_at, value, minutes, reflection, metadata, updated_at)
-                                values (%s, null, null, null, null, '{}'::jsonb, now())
-                                on conflict (achievement_key) do update set
-                                    unlocked_at = null,
-                                    value = null,
-                                    minutes = null,
-                                    reflection = null,
-                                    metadata = '{}'::jsonb,
-                                    updated_at = now()
-                                """,
-                                (key,),
-                            )
-                            continue
-                        metadata = {
-                            k: v
-                            for k, v in achievement.items()
-                            if k not in {"unlocked_at", "value", "minutes", "reflection"}
-                        }
-                        cur.execute(
+                    if rows:
+                        cur.executemany(
                             """
                             insert into achievements
                                 (achievement_key, unlocked_at, value, minutes, reflection, metadata, updated_at)
@@ -677,14 +679,7 @@ def save_achievements() -> None:
                                 metadata = excluded.metadata,
                                 updated_at = now()
                             """,
-                            (
-                                key,
-                                parse_datetime_value(achievement.get("unlocked_at")) if achievement.get("unlocked_at") else None,
-                                achievement.get("value"),
-                                achievement.get("minutes"),
-                                achievement.get("reflection"),
-                                jsonb(metadata),
-                            ),
+                            rows,
                         )
             return
         except Exception:
@@ -735,16 +730,29 @@ def load_challenges() -> dict[str, dict[str, Any]]:
 def save_challenges() -> None:
     if db_enabled():
         try:
+            rows = []
+            for key, challenge in CHALLENGES.get("completed", {}).items():
+                metadata = {
+                    k: v
+                    for k, v in challenge.items()
+                    if k not in {"completion_key", "challenge_id", "title", "period", "completed_at", "xp"}
+                }
+                rows.append(
+                    (
+                        challenge.get("completion_key", key),
+                        challenge.get("challenge_id", ""),
+                        challenge.get("title", ""),
+                        challenge.get("period", "daily"),
+                        parse_datetime_value(challenge.get("completed_at")),
+                        int(challenge.get("xp", 0)),
+                        jsonb(metadata),
+                    )
+                )
             with db_connect() as conn:
                 with conn.cursor() as cur:
                     keys = list(CHALLENGES.get("completed", {}).keys())
-                    for key, challenge in CHALLENGES.get("completed", {}).items():
-                        metadata = {
-                            k: v
-                            for k, v in challenge.items()
-                            if k not in {"completion_key", "challenge_id", "title", "period", "completed_at", "xp"}
-                        }
-                        cur.execute(
+                    if rows:
+                        cur.executemany(
                             """
                             insert into completed_challenges
                                 (completion_key, challenge_id, title, period, completed_at, xp, metadata)
@@ -757,15 +765,7 @@ def save_challenges() -> None:
                                 xp = excluded.xp,
                                 metadata = excluded.metadata
                             """,
-                            (
-                                challenge.get("completion_key", key),
-                                challenge.get("challenge_id", ""),
-                                challenge.get("title", ""),
-                                challenge.get("period", "daily"),
-                                parse_datetime_value(challenge.get("completed_at")),
-                                int(challenge.get("xp", 0)),
-                                jsonb(metadata),
-                            ),
+                            rows,
                         )
                     if keys:
                         cur.execute("delete from completed_challenges where not (completion_key = any(%s))", (keys,))
@@ -819,16 +819,29 @@ def load_rewards() -> dict[str, dict[str, Any]]:
 def save_rewards() -> None:
     if db_enabled():
         try:
+            rows = []
+            for reward_id, reward in REWARDS.get("rewards", {}).items():
+                metadata = {
+                    k: v
+                    for k, v in reward.items()
+                    if k not in {"status", "unlocked_at", "requested_at", "delivered_at", "email_sent_at"}
+                }
+                rows.append(
+                    (
+                        reward_id,
+                        reward.get("status", "locked"),
+                        parse_datetime_value(reward.get("unlocked_at")) if reward.get("unlocked_at") else None,
+                        parse_datetime_value(reward.get("requested_at")) if reward.get("requested_at") else None,
+                        parse_datetime_value(reward.get("delivered_at")) if reward.get("delivered_at") else None,
+                        parse_datetime_value(reward.get("email_sent_at")) if reward.get("email_sent_at") else None,
+                        jsonb(metadata),
+                    )
+                )
             with db_connect() as conn:
                 with conn.cursor() as cur:
                     ids = list(REWARDS.get("rewards", {}).keys())
-                    for reward_id, reward in REWARDS.get("rewards", {}).items():
-                        metadata = {
-                            k: v
-                            for k, v in reward.items()
-                            if k not in {"status", "unlocked_at", "requested_at", "delivered_at", "email_sent_at"}
-                        }
-                        cur.execute(
+                    if rows:
+                        cur.executemany(
                             """
                             insert into rewards
                                 (reward_id, status, unlocked_at, requested_at, delivered_at, email_sent_at, metadata, updated_at)
@@ -842,15 +855,7 @@ def save_rewards() -> None:
                                 metadata = excluded.metadata,
                                 updated_at = now()
                             """,
-                            (
-                                reward_id,
-                                reward.get("status", "locked"),
-                                parse_datetime_value(reward.get("unlocked_at")) if reward.get("unlocked_at") else None,
-                                parse_datetime_value(reward.get("requested_at")) if reward.get("requested_at") else None,
-                                parse_datetime_value(reward.get("delivered_at")) if reward.get("delivered_at") else None,
-                                parse_datetime_value(reward.get("email_sent_at")) if reward.get("email_sent_at") else None,
-                                jsonb(metadata),
-                            ),
+                            rows,
                         )
                     if ids:
                         cur.execute("delete from rewards where not (reward_id = any(%s))", (ids,))
@@ -954,16 +959,28 @@ def load_xp_ledger() -> dict[str, list[dict[str, Any]]]:
 def save_xp_ledger() -> None:
     if db_enabled():
         try:
+            rows = []
+            for entry in XP_LEDGER.get("entries", []):
+                metadata = {
+                    k: v
+                    for k, v in entry.items()
+                    if k not in {"id", "title", "xp", "category", "created_at"}
+                }
+                rows.append(
+                    (
+                        entry["id"],
+                        entry.get("title", ""),
+                        int(entry.get("xp", 0)),
+                        entry.get("category", ""),
+                        parse_datetime_value(entry.get("created_at")),
+                        jsonb(metadata),
+                    )
+                )
             with db_connect() as conn:
                 with conn.cursor() as cur:
                     ids = [entry["id"] for entry in XP_LEDGER.get("entries", []) if "id" in entry]
-                    for entry in XP_LEDGER.get("entries", []):
-                        metadata = {
-                            k: v
-                            for k, v in entry.items()
-                            if k not in {"id", "title", "xp", "category", "created_at"}
-                        }
-                        cur.execute(
+                    if rows:
+                        cur.executemany(
                             """
                             insert into xp_entries (id, title, xp, category, created_at, metadata)
                             values (%s, %s, %s, %s, %s, %s)
@@ -974,14 +991,7 @@ def save_xp_ledger() -> None:
                                 created_at = excluded.created_at,
                                 metadata = excluded.metadata
                             """,
-                            (
-                                entry["id"],
-                                entry.get("title", ""),
-                                int(entry.get("xp", 0)),
-                                entry.get("category", ""),
-                                parse_datetime_value(entry.get("created_at")),
-                                jsonb(metadata),
-                            ),
+                            rows,
                         )
                     if ids:
                         cur.execute("delete from xp_entries where not (id = any(%s))", (ids,))
