@@ -12,10 +12,9 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
-      # TODO docasne pro rucni testovani o vikendu (UTC+14 = uz je tam pondeli);
-      # po otestovani prepnout na Europe/Prague, jinak se patek odpoledne bude blokovat!
+      # cesky cas, aby se pracovni dny a hranice dne pocitaly podle CZ, ne UTC
       - key: TZ
-        value: Pacific/Kiritimati
+        value: Europe/Prague
       - key: APP_ENV
         value: production
       - key: SESSION_COOKIE_SECURE
