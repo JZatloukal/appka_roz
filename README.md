@@ -26,6 +26,16 @@ Aplikace používá lokální `.env`, který se neposílá do gitu. Ukázka prom
 
 Lokálně aplikace používá JSON soubory v kořeni projektu. Pro produkci je připravený Postgres migrační skript v `database/`.
 
+## Nasazení na Render
+
+Repo obsahuje `render.yaml` — na Renderu zvol **New → Blueprint** a připoj tohle repo.
+Render si z něj vytvoří web service sám. Při prvním nasazení doplň hodnoty proměnných,
+které se nesynchronizují: `DATABASE_URL` (Neon), `APP_USERNAME`, `APP_PASSWORD`,
+`APP_DISPLAY_NAME`. `SECRET_KEY` si Render vygeneruje sám.
+
+Pozn.: free tier Renderu se po 15 minutách nečinnosti uspává — první načtení pak trvá
+kolem půl minuty.
+
 ## Hlasové nahrávky
 
 Nahrávky jsou ve `static/audio/voice/`. Aplikace je vybírá náhodně po dosažení nastaveného počtu prodejů, bez opakování stejné nahrávky dvakrát za sebou.

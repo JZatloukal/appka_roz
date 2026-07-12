@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: rozanov
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # presne 1 worker: appka drzi data v pameti procesu (SALES apod.),
+    # vic workeru by melo kazdy svou kopii a data by se rozjela
+    startCommand: gunicorn main:app --workers 1 --bind 0.0.0.0:$PORT
+    healthCheckPath: /login
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: APP_ENV
+        value: production
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: APP_DISPLAY_NAME
+        sync: false
