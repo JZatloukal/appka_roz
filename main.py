@@ -498,9 +498,7 @@ def _write_analytics_event(event: dict[str, Any]) -> None:
                         ),
                     )
             return
-        except Exception as exc:
-            global _analytics_last_error
-            _analytics_last_error = f"db: {exc!r}"
+        except Exception:
             app.logger.exception("Database log_event failed; falling back to JSON.")
 
     events = read_analytics_events()
@@ -510,21 +508,16 @@ def _write_analytics_event(event: dict[str, Any]) -> None:
 
 
 _analytics_queue: queue.Queue = queue.Queue()
-_analytics_last_error: str | None = None
-_analytics_written = 0
 _analytics_thread: threading.Thread | None = None
 _analytics_thread_lock = threading.Lock()
 
 
 def _analytics_worker() -> None:
-    global _analytics_last_error, _analytics_written
     while True:
         event = _analytics_queue.get()
         try:
             _write_analytics_event(event)
-            _analytics_written += 1
-        except Exception as exc:
-            _analytics_last_error = repr(exc)
+        except Exception:
             app.logger.exception("Unable to write analytics event: %s", event.get("event_type"))
         finally:
             _analytics_queue.task_done()
@@ -2508,21 +2501,6 @@ def save_achievement_reflection(achievement_key: str):
     session["reflection_saved"] = True
     log_event("achievement_reflection_saved", {"achievement_key": achievement_key})
     return redirect(url_for("challenges_page") + "#moments")
-
-
-# TODO docasna diagnosticka routa pro ladeni analytiky na Renderu - po vyreseni smazat
-@app.route("/debug-analytics")
-@login_required(hide=True)
-def debug_analytics():
-    return {
-        "threads": [t.name for t in threading.enumerate()],
-        "queue_size": _analytics_queue.qsize(),
-        "written": _analytics_written,
-        "last_error": _analytics_last_error,
-        "db_enabled": db_enabled(),
-        "db_unavailable_reason": db_unavailable_reason(),
-        "analytics_json_exists": ANALYTICS_FILE.exists(),
-    }
 
 
 @app.route("/voice-audio")
