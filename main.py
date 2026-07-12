@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import os
+import queue
 import random
 import secrets
 import threading
@@ -474,12 +475,63 @@ def read_analytics_events() -> list[dict[str, Any]]:
     return data if isinstance(data, list) else []
 
 
+def _write_analytics_event(event: dict[str, Any]) -> None:
+    if db_enabled():
+        try:
+            with db_connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        insert into analytics_events
+                            (event_type, app_user, path, method, ip_hash, user_agent, metadata, created_at)
+                        values (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            event["event_type"],
+                            event["user"],
+                            event["path"],
+                            event["method"],
+                            event["ip_hash"],
+                            event["user_agent"],
+                            jsonb(event["metadata"]),
+                            parse_datetime_value(event["created_at"]),
+                        ),
+                    )
+            return
+        except Exception:
+            app.logger.exception("Database log_event failed; falling back to JSON.")
+
+    events = read_analytics_events()
+    event["id"] = (events[-1]["id"] + 1) if events and isinstance(events[-1].get("id"), int) else 1
+    events.append(event)
+    write_json(ANALYTICS_FILE, events)
+
+
+_analytics_queue: queue.Queue = queue.Queue()
+
+
+def _analytics_worker() -> None:
+    while True:
+        event = _analytics_queue.get()
+        try:
+            _write_analytics_event(event)
+        except Exception:
+            app.logger.exception("Unable to write analytics event: %s", event.get("event_type"))
+        finally:
+            _analytics_queue.task_done()
+
+
+threading.Thread(target=_analytics_worker, daemon=True, name="analytics-writer").start()
+
+
 def log_event(
     event_type: str,
     metadata: dict[str, Any] | None = None,
     *,
     user: str | None = None,
 ) -> None:
+    # zapis probiha asynchronne ve vlakne, aby na analytiku necekal zadny request;
+    # data z requestu se musi vycist tady (na pozadi uz request context neexistuje)
     try:
         metadata_payload = as_plain_json(metadata or {})
         event: dict[str, Any] = {
@@ -506,37 +558,9 @@ def log_event(
                 }
             )
 
-        if db_enabled():
-            try:
-                with db_connect() as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            """
-                            insert into analytics_events
-                                (event_type, app_user, path, method, ip_hash, user_agent, metadata, created_at)
-                            values (%s, %s, %s, %s, %s, %s, %s, %s)
-                            """,
-                            (
-                                event["event_type"],
-                                event["user"],
-                                event["path"],
-                                event["method"],
-                                event["ip_hash"],
-                                event["user_agent"],
-                                jsonb(event["metadata"]),
-                                parse_datetime_value(event["created_at"]),
-                            ),
-                        )
-                return
-            except Exception:
-                app.logger.exception("Database log_event failed; falling back to JSON.")
-
-        events = read_analytics_events()
-        event["id"] = (events[-1]["id"] + 1) if events and isinstance(events[-1].get("id"), int) else 1
-        events.append(event)
-        write_json(ANALYTICS_FILE, events)
+        _analytics_queue.put(event)
     except Exception:
-        app.logger.exception("Unable to write analytics event: %s", event_type)
+        app.logger.exception("Unable to queue analytics event: %s", event_type)
 
 
 def save_sales() -> None:
