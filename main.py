@@ -2224,7 +2224,7 @@ def challenges_page():
             log_event(
                 "challenge_completed",
                 {
-                    "challenge_id": challenge["id"],
+                    "challenge_id": challenge["challenge_id"],
                     "title": challenge["title"],
                     "xp": challenge["xp"],
                 },
@@ -2357,7 +2357,7 @@ def add_sale():
                 log_event(
                     "challenge_completed",
                     {
-                        "challenge_id": challenge["id"],
+                        "challenge_id": challenge["challenge_id"],
                         "title": challenge["title"],
                         "xp": challenge["xp"],
                     },
