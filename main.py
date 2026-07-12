@@ -6,6 +6,8 @@ import json
 import os
 import random
 import secrets
+import threading
+import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from functools import wraps
@@ -291,10 +293,62 @@ def db_unavailable_reason() -> str | None:
     return None
 
 
+_db_lock = threading.RLock()
+_db_conn = None
+_db_last_used = 0.0
+DB_PING_AFTER_SECONDS = 60
+
+
+class _SharedDbConnection:
+    # Nove TLS pripojeni k Neonu stoji ~1 s, proto se jedno pripojeni sdili pro cely proces.
+    # Chova se jako `with psycopg.connect(...)`: commit pri uspechu, rollback pri vyjimce,
+    # jen se pripojeni na konci bloku nezavira.
+
+    def __enter__(self):
+        global _db_conn, _db_last_used
+        _db_lock.acquire()
+        try:
+            if _db_conn is not None and not _db_conn.closed:
+                if time.monotonic() - _db_last_used > DB_PING_AFTER_SECONDS:
+                    try:
+                        _db_conn.execute("select 1")
+                    except Exception:
+                        try:
+                            _db_conn.close()
+                        except Exception:
+                            pass
+                        _db_conn = None
+            if _db_conn is None or _db_conn.closed:
+                _db_conn = psycopg.connect(DATABASE_URL)
+            _db_last_used = time.monotonic()
+            return _db_conn
+        except BaseException:
+            _db_lock.release()
+            raise
+
+    def __exit__(self, exc_type, exc, tb):
+        global _db_conn
+        try:
+            if _db_conn is not None and not _db_conn.closed:
+                if exc_type is None:
+                    _db_conn.commit()
+                else:
+                    _db_conn.rollback()
+        except Exception:
+            try:
+                _db_conn.close()
+            except Exception:
+                pass
+            _db_conn = None
+        finally:
+            _db_lock.release()
+        return False
+
+
 def db_connect():
     if not db_enabled():
         raise RuntimeError(db_unavailable_reason() or "Database is not enabled")
-    return psycopg.connect(DATABASE_URL)
+    return _SharedDbConnection()
 
 
 def as_plain_json(value: Any) -> Any:
