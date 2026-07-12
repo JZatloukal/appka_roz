@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_ui_icons.html" import icon as ui_icon %}
+{% block title %}Výzvy{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+    {% include "_sidebar.html" %}
+    <main class="dash-main feature-page">
+        <header class="feature-header">
+            <div><span>Malé kroky, velký posun</span><h1>Výzvy</h1><p>Průběžné cíle, které pomáhají udržet tempo.</p></div>
+            <div class="challenge-summary-pill">
+                <strong>+{{ challenge_bonus_xp }} XP</strong>
+                <span>{{ challenge_history_count }} splněných výzev</span>
+            </div>
+        </header>
+
+        {% set toasts = namespace(items=[]) %}
+        {% set new_challenges = session.pop('new_challenges', []) %}
+        {% if new_challenges %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'challenge', 'title': 'Nově splněno.', 'text': new_challenges | join(', ')}] %}
+        {% endif %}
+        {% if session.pop('reflection_saved', False) %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'success', 'title': 'Reflexe uložena.', 'text': 'Můžeš se k ní kdykoliv vrátit.'}] %}
+        {% endif %}
+        {% set toast_items = toasts.items %}
+        {% include "_toasts.html" %}
+
+        <section class="challenge-columns">
+            <div>
+                <div class="feature-section-heading">
+                    <div><span>Dnes</span><h2>Denní výzvy</h2></div>
+                    <small>Nový výběr zítra</small>
+                </div>
+                <div class="challenge-list">
+                    {% if daily_challenges %}
+                        {% for challenge in daily_challenges %}
+                            <article class="dash-card challenge-card {{ 'completed' if challenge.complete else '' }}">
+                                <div class="challenge-icon">{{ ui_icon(challenge.icon) }}</div>
+                                <div>
+                                    <strong>{{ challenge.title }}</strong>
+                                    <p>{{ challenge.description }}</p>
+                                    <div class="mini-progress"><i style="width: {{ challenge.progress }}%"></i></div>
+                                    <small>Odměna +{{ challenge.xp }} XP</small>
+                                </div>
+                                <b>{{ '✓' if challenge.complete else challenge.progress_text }}</b>
+                            </article>
+                        {% endfor %}
+                    {% else %}
+                        <article class="dash-card workday-pause-card">
+                            <div class="challenge-icon">{{ ui_icon('weekend') }}</div>
+                            <div><strong>Výzvy mají víkendovou pauzu</strong><p>Nová denní sada se objeví v pondělí.</p></div>
+                        </article>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div>
+                <div class="feature-section-heading">
+                    <div><span>Tento týden</span><h2>Týdenní výzvy</h2></div>
+                    <small>Nový výběr v pondělí</small>
+                </div>
+                <div class="challenge-list">
+                    {% for challenge in weekly_challenges %}
+                        <article class="dash-card challenge-card {{ 'completed' if challenge.complete else '' }}">
+                            <div class="challenge-icon">{{ ui_icon(challenge.icon) }}</div>
+                            <div>
+                                <strong>{{ challenge.title }}</strong>
+                                <p>{{ challenge.description }}</p>
+                                <div class="mini-progress"><i style="width: {{ challenge.progress }}%"></i></div>
+                                <small>Odměna +{{ challenge.xp }} XP</small>
+                            </div>
+                            <b>{{ '✓' if challenge.complete else challenge.progress_text }}</b>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section id="moments">
+            <div class="feature-section-heading">
+                <div><span>Milníky</span><h2>Momenty</h2></div>
+                <small class="achievement-xp-total">Bonus ze sbírky: +{{ achievement_bonus_xp }} XP</small>
+            </div>
+            <div class="badge-collection">
+                {% for badge in achievement_views %}
+                    <button class="badge-tile {{ 'unlocked' if badge.unlocked else 'locked' }}" type="button" onclick="document.getElementById('badge-{{ badge.key }}').showModal()">
+                        <div class="achievement-medal theme-{{ badge.theme }} {{ 'is-unlocked' if badge.unlocked else '' }}">
+                            <span class="medal-mark-text">{{ badge.mark }}</span>
+                        </div>
+                        <strong>{{ badge.label }}{% if badge.key == 'personal_record' and badge.value %}: {{ badge.value }}{% endif %}</strong>
+                        <span>{{ badge.unlocked_at if badge.unlocked else 'Uzamčeno' }}</span>
+                    </button>
+
+                    <dialog class="badge-dialog" id="badge-{{ badge.key }}">
+                        <button class="celebration-close" type="button" onclick="this.closest('dialog').close()" aria-label="Zavřít">×</button>
+                        <div class="achievement-medal theme-{{ badge.theme }} {{ 'is-unlocked' if badge.unlocked else '' }}"><span class="medal-mark-text">{{ badge.mark }}</span></div>
+                        <span class="celebration-kicker">{{ 'Odemčeno ' ~ badge.unlocked_at if badge.unlocked else 'Zatím uzamčeno' }}</span>
+                        <h3>{{ badge.label }}</h3>
+                        <p>{{ badge.description }}</p>
+                        <strong class="badge-xp">+{{ badge.xp }} XP</strong>
+                        {% if badge.unlocked %}
+                            <form method="post" action="{{ url_for('save_achievement_reflection', achievement_key=badge.key) }}">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <label for="reflection-{{ badge.key }}">Co ti pomohlo tohoto momentu dosáhnout?</label>
+                                <textarea id="reflection-{{ badge.key }}" name="reflection" maxlength="300" rows="3" placeholder="Krátká poznámka pro budoucí já…">{{ badge.reflection }}</textarea>
+                                <button class="dash-primary-button" type="submit">Uložit</button>
+                            </form>
+                        {% else %}
+                            <small>Splň podmínku a medailon se rozzáří.</small>
+                        {% endif %}
+                    </dialog>
+                {% endfor %}
+            </div>
+        </section>
+
+        <footer class="creator-signature dashboard-signature">Made by Honzi</footer>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Prodeje{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+    {% include "_sidebar.html" %}
+    <main class="dash-main feature-page">
+        <header class="feature-header">
+            <div><span>Tvoje výsledky</span><h1>Prodeje</h1><p>Kompletní historie zaznamenaných prodejů.</p></div>
+            <a class="dash-primary-button" href="{{ url_for('dashboard') }}#sales-form">Zapsat prodej</a>
+        </header>
+
+        <section class="summary-cards">
+            <article class="dash-card metric-card"><span>Celkem prodejů</span><strong>{{ total_sales }}</strong><p>všechny záznamy</p></article>
+            <article class="dash-card metric-card"><span>Celková hodnota</span><strong>{{ format_czk(total_revenue) }} Kč</strong><p>evidovaný obrat</p></article>
+            <article class="dash-card metric-card"><span>Dnes</span><strong>{{ today_sales }}</strong><p>{{ format_czk(today_revenue) }} Kč</p></article>
+            <article class="dash-card metric-card"><span>Tento měsíc</span><strong>{{ month_sales }}</strong><p>{{ format_czk(month_revenue) }} Kč</p></article>
+        </section>
+
+        <section class="dash-card sales-catalog">
+            <form class="sales-toolbar" method="get">
+                <input type="search" name="q" value="{{ query }}" placeholder="Hledat podle klienta nebo poznámky…">
+                <input type="hidden" name="period" value="{{ period }}">
+                <button class="toolbar-search" type="submit">Hledat</button>
+            </form>
+            <div class="filter-pills">
+                <a class="{{ 'active' if period == 'all' else '' }}" href="{{ url_for('sales_page', q=query, period='all') }}">Vše</a>
+                <a class="{{ 'active' if period == 'today' else '' }}" href="{{ url_for('sales_page', q=query, period='today') }}">Dnes</a>
+                <a class="{{ 'active' if period == 'week' else '' }}" href="{{ url_for('sales_page', q=query, period='week') }}">Tento týden</a>
+                <a class="{{ 'active' if period == 'month' else '' }}" href="{{ url_for('sales_page', q=query, period='month') }}">Tento měsíc</a>
+            </div>
+
+            {% if sales %}
+                <div class="catalog-list">
+                    {% for sale in sales %}
+                        <article class="catalog-sale">
+                            <span class="dash-sale-check">✓</span>
+                            <div>
+                                <strong>{{ sale.customer }}</strong>
+                                <p>{{ sale.note or 'Prodej byl úspěšně zaznamenán.' }}</p>
+                            </div>
+                            <time>{{ sale.created_at.strftime('%d.%m.%Y · %H:%M') }}</time>
+                            <strong class="dash-sale-amount">+{{ format_czk(sale.amount) }} Kč</strong>
+                            <form method="post" action="{{ url_for('delete_sale', sale_id=sale.id) }}">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <button class="dash-delete" type="submit" aria-label="Smazat prodej">×</button>
+                            </form>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="feature-empty"><strong>Zatím tu nejsou žádné prodeje.</strong><p>Změň filtr nebo zapiš první prodej z Přehledu.</p></div>
+            {% endif %}
+        </section>
+        <footer class="creator-signature dashboard-signature">Made by Honzi</footer>
+    </main>
+</div>
+{% endblock %}

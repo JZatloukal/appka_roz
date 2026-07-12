@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Rozanov{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/chart.png') }}">
+    <meta name="theme-color" content="#fff1f7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="theme-{{ active_theme }}">
+    {% block content %}{% endblock %}
+    <script>
+        (() => {
+            const closeToast = (toast) => {
+                if (!toast || toast.dataset.closing === "true") return;
+                toast.dataset.closing = "true";
+                toast.classList.add("is-hiding");
+                window.setTimeout(() => toast.remove(), 260);
+            };
+
+            document.querySelectorAll("[data-toast]").forEach((toast) => {
+                const timer = window.setTimeout(() => closeToast(toast), 4800);
+                toast.querySelector("[data-toast-close]")?.addEventListener("click", () => {
+                    window.clearTimeout(timer);
+                    closeToast(toast);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

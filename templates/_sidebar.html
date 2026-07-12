@@ -1,0 +1,47 @@
+<aside class="dash-sidebar">
+    <nav class="dash-nav" aria-label="Hlavní navigace">
+        <a class="{{ 'active' if active_page == 'dashboard' else '' }}" href="{{ url_for('dashboard') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            Přehled
+        </a>
+        <a class="{{ 'active' if active_page == 'sales' else '' }}" href="{{ url_for('sales_page') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/>
+            </svg>
+            Prodeje
+        </a>
+        <a class="{{ 'active' if active_page == 'stats' else '' }}" href="{{ url_for('stats_page') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7M3 20h18"/>
+            </svg>
+            Statistiky
+        </a>
+        <a class="{{ 'active' if active_page == 'progress' else '' }}" href="{{ url_for('progress_page') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 19V13h4v6M10 19V9h4v10M15 19V5h4v14M3 19h18"/>
+            </svg>
+            Postup
+        </a>
+        <a class="{{ 'active' if active_page == 'challenges' else '' }}" href="{{ url_for('challenges_page') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/><path d="m15 9 5-5M16 4h4v4"/>
+            </svg>
+            Výzvy
+        </a>
+        <a class="{{ 'active' if active_page == 'rewards' else '' }}" href="{{ url_for('rewards_page') }}">
+            <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13"/>
+                <path d="M12 7H8.5A2.5 2.5 0 1 1 11 4.5L12 7ZM12 7h3.5A2.5 2.5 0 1 0 13 4.5L12 7Z"/>
+            </svg>
+            Odměny
+        </a>
+    </nav>
+    <a class="dash-logout" href="{{ url_for('logout') }}">
+        <svg class="dash-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"/>
+        </svg>
+        Odhlásit se
+    </a>
+</aside>

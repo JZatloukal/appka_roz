@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Postup{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+    {% include "_sidebar.html" %}
+    <main class="dash-main feature-page progress-page">
+        <header class="feature-header">
+            <div>
+                <span>Tvoje cesta</span>
+                <h1>Postup</h1>
+                <p>XP ukazuje dlouhodobý posun a postupně otevírá nové odměny a přehledy.</p>
+            </div>
+        </header>
+
+        {% if progress_message %}
+            {% set toast_items = [{'type': 'success', 'icon': 'success', 'title': 'Změna uložena.', 'text': progress_message}] %}
+            {% include "_toasts.html" %}
+        {% endif %}
+
+        <section class="progress-hero">
+            <div class="progress-level-orb"><span>Úroveň</span><strong>{{ effective_level }}</strong></div>
+            <div class="progress-hero-copy">
+                <span>Aktuální stav</span>
+                <h2>{{ xp }} XP</h2>
+                <p>{{ 'Všechny připravené odměny jsou odemčené.' if not next_step else 'Každý další krok otevírá novou část aplikace.' }}</p>
+                <div class="progress-level-bar"><i style="width: {{ level_progress }}%"></i></div>
+                <div class="progress-level-meta"><span>{{ current_step.xp }} XP</span><span>{{ next_step.xp ~ ' XP' if next_step else xp ~ ' XP' }}</span></div>
+            </div>
+            <aside class="progress-next-unlock">
+                <span>Další odemčení</span>
+                {% if next_step %}
+                    <strong>{{ next_step.title }}</strong>
+                    {% if final_required %}
+                        <p>XP je splněno. Teď dokonči finální výzvu.</p>
+                    {% else %}
+                        <p>Zbývá {{ xp_remaining }} XP.</p>
+                    {% endif %}
+                {% else %}
+                    <strong>Cesta dokončena</strong>
+                    <p>Všechny připravené odměny jsou dostupné.</p>
+                {% endif %}
+            </aside>
+        </section>
+
+        <section id="themes">
+            <div class="feature-section-heading"><div><span>Vzhled aplikace</span><h2>Barevné motivy</h2></div><small>Aktivní motiv zůstane uložený.</small></div>
+            <div class="progress-theme-grid">
+                {% for theme in [
+                    {'id': 'rose', 'title': 'Rozanov Rose', 'level': 1, 'preview': 'rose', 'description': 'Výchozí růžovo-fialový vzhled.'},
+                    {'id': 'soft-blush', 'title': 'Soft Blush', 'level': 2, 'preview': 'blush', 'description': 'Světlý a jemný růžový motiv.'},
+                    {'id': 'lavender-mist', 'title': 'Lavender Mist', 'level': 7, 'preview': 'lavender', 'description': 'Světlý levandulovo-krémový motiv.'}
+                ] %}
+                    <article class="dash-card progress-theme-card {{ 'is-locked' if effective_level < theme.level else '' }}">
+                        <div class="theme-preview theme-preview-{{ theme.preview }}"><i></i><i></i><i></i></div>
+                        <span>Úroveň {{ theme.level }}</span>
+                        <h3>{{ theme.title }}</h3>
+                        <p>{{ theme.description }}</p>
+                        {% if active_theme == theme.id %}
+                            <button type="button" disabled>Aktivní</button>
+                        {% elif effective_level >= theme.level %}
+                            <form method="post" action="{{ url_for('activate_progress_theme', theme_id=theme.id) }}">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">Použít motiv</button>
+                            </form>
+                        {% else %}
+                            <button type="button" disabled>Uzamčeno</button>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section>
+            <div class="feature-section-heading"><div><span>Pravidla</span><h2>Jak získáváš XP</h2></div></div>
+            <div class="xp-source-grid">
+                {% for source in xp_sources %}
+                    <article class="dash-card xp-source-card"><strong>{{ source.value }}</strong><h3>{{ source.title }}</h3><p>{{ source.description }}</p></article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section>
+            <div class="feature-section-heading"><div><span>Úrovně</span><h2>Cesta odemčení</h2></div><small>XP se neutrácejí.</small></div>
+            <div class="level-roadmap">
+                {% for step in level_roadmap %}
+                    <article class="level-step {{ 'reached' if effective_level >= step.level else '' }}">
+                        <div class="level-step-number">{{ step.level }}</div>
+                        <div><span>{{ step.xp }} XP</span><h3>{{ step.title }}</h3><p>{{ step.description }}</p></div>
+                        <strong>{{ 'Dosaženo' if effective_level >= step.level else 'Uzamčeno' }}</strong>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section>
+            <div class="feature-section-heading"><div><span>Přehled</span><h2>Historie XP</h2></div></div>
+            {% if effective_level < 3 %}
+                <article class="dash-card progress-locked-feature"><strong>Odemkne se na úrovni 3</strong><p>Potom uvidíš, odkud jednotlivé body přišly.</p></article>
+            {% elif xp_history %}
+                <div class="dash-card xp-history">
+                    {% for entry in xp_history %}
+                        <div><span><strong>{{ entry.title }}</strong><small>{{ entry.category }} · {{ entry.date_display }}</small></span><b>+{{ entry.xp }} XP</b></div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <article class="dash-card progress-locked-feature"><strong>Historie je zatím prázdná.</strong><p>První prodej nebo splněná výzva sem přidá záznam.</p></article>
+            {% endif %}
+        </section>
+
+        <section>
+            <div class="feature-section-heading"><div><span>Úrovně 4–6</span><h2>Výsledky a rekordy</h2></div></div>
+            <div class="progress-reward-grid">
+                <article class="dash-card progress-reward-card {{ 'is-locked' if effective_level < 4 else '' }}">
+                    <span>Úroveň 4</span><div class="progress-card-heading"><h3>Trend výkonu</h3><details class="analytics-help"><summary aria-label="Jak se počítá trend výkonu">?</summary><div>Porovnáváme prodeje od pondělí tohoto týdne se stejným obdobím minulého týdne. Procenta ukazují, o kolik se změnil počet prodejů a jejich celková hodnota. Nejsilnější den vychází ze všech dosud zapsaných prodejů.</div></details></div>
+                    {% if effective_level >= 4 %}
+                        <dl>
+                            <div><dt>Prodeje tento / minulý týden</dt><dd>{{ analytics.week.sales }} / {{ analytics.week.previous_sales }}</dd></div>
+                            <div><dt>Změna počtu</dt><dd>{{ (('+' if analytics.week.sales_change > 0 else '') ~ analytics.week.sales_change ~ ' %') if analytics.week.sales_change is not none else 'Čeká na srovnání' }}</dd></div>
+                            <div><dt>Změna hodnoty</dt><dd>{{ (('+' if analytics.week.revenue_change > 0 else '') ~ analytics.week.revenue_change ~ ' %') if analytics.week.revenue_change is not none else 'Čeká na srovnání' }}</dd></div>
+                            <div><dt>Dlouhodobě nejsilnější den</dt><dd>{{ analytics.week.strongest_weekday or 'Čeká na data' }}</dd></div>
+                        </dl>
+                    {% else %}<p>Odemkne se na úrovni 4.</p>{% endif %}
+                </article>
+                <article class="dash-card progress-reward-card {{ 'is-locked' if effective_level < 5 else '' }}">
+                    <span>Úroveň 5</span><div class="progress-card-heading"><h3>Měsíční rekapitulace</h3><details class="analytics-help"><summary aria-label="Jak se počítá měsíční rekapitulace">?</summary><div>Počítáme prodeje v aktuálním kalendářním měsíci a porovnáváme je s předchozím. Aktivní den je pracovní den s alespoň jedním prodejem. Průměr na den je měsíční hodnota rozdělená mezi tyto aktivní dny.</div></details></div>
+                    {% if effective_level >= 5 %}
+                        <dl>
+                            <div><dt>Tento / minulý měsíc</dt><dd>{{ analytics.month.sales }} / {{ analytics.month.previous_sales }} prodejů</dd></div>
+                            <div><dt>Aktivní pracovní dny</dt><dd>{{ analytics.month.active_days }}</dd></div>
+                            <div><dt>Průměr na aktivní den</dt><dd>{{ format_czk(analytics.month.average_per_active_day) }} Kč</dd></div>
+                            <div><dt>Nejlepší týden měsíce</dt><dd>{{ analytics.month.best_week_sales }} prodejů · {{ format_czk(analytics.month.best_week_revenue) }} Kč</dd></div>
+                        </dl>
+                        <a class="progress-action-link" href="{{ url_for('download_monthly_report') }}">Stáhnout rekapitulaci</a>
+                    {% else %}<p>Odemkne se na úrovni 5.</p>{% endif %}
+                </article>
+                <article class="dash-card progress-reward-card {{ 'is-locked' if effective_level < 6 else '' }}">
+                    <span>Úroveň 6</span><div class="progress-card-heading"><h3>Osobní rekordy</h3><details class="analytics-help"><summary aria-label="Jak se počítají osobní rekordy">?</summary><div>Hledáme nejvyšší jednotlivý prodej, den s největším počtem prodejů a den s nejvyšší celkovou hodnotou. Série znamená navazující pracovní dny, ve kterých byl zapsaný alespoň jeden prodej.</div></details></div>
+                    {% if effective_level >= 6 %}
+                        <dl>
+                            <div><dt>Nejvyšší prodej</dt><dd>{{ format_czk(analytics.records.highest_sale.amount) ~ ' Kč · ' ~ analytics.records.highest_sale.created_at.strftime('%d.%m.%Y') if analytics.records.highest_sale else 'Čeká na data' }}</dd></div>
+                            <div><dt>Nejvíce prodejů za den</dt><dd>{{ analytics.records.best_count_day[1]|length ~ ' · ' ~ analytics.records.best_count_day[0].strftime('%d.%m.%Y') if analytics.records.best_count_day else 'Čeká na data' }}</dd></div>
+                            <div><dt>Nejvyšší denní hodnota</dt><dd>{{ format_czk(analytics.records.best_revenue_day[1]|sum(attribute='amount')) ~ ' Kč · ' ~ analytics.records.best_revenue_day[0].strftime('%d.%m.%Y') if analytics.records.best_revenue_day else 'Čeká na data' }}</dd></div>
+                            <div><dt>Nejdelší pracovní série</dt><dd>{{ analytics.records.longest_streak }} dnů{% if analytics.records.longest_streak_end %} · do {{ analytics.records.longest_streak_end.strftime('%d.%m.%Y') }}{% endif %}</dd></div>
+                        </dl>
+                    {% else %}<p>Odemkne se na úrovni 6.</p>{% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section>
+            <div class="feature-section-heading"><div><span>Úrovně 8–10</span><h2>Závěr cesty</h2></div></div>
+            <div class="progress-reward-grid">
+                <article class="dash-card progress-reward-card {{ 'is-locked' if effective_level < 8 else '' }}"><span>Úroveň 8</span><div class="progress-card-heading"><h3>Co už jsi dokázala</h3><details class="analytics-help"><summary aria-label="Jak se počítá souhrn celé cesty">?</summary><div>Tady sčítáme celou dosavadní cestu: pracovní dny s prodejem, všechny prodeje, splněné výzvy a odemčené milníky. Nejsilnější měsíc je ten s největším počtem prodejů; při shodě rozhoduje jejich hodnota.</div></details></div>{% if effective_level >= 8 %}<dl><div><dt>Aktivní pracovní dny</dt><dd>{{ analytics.journey.active_days }}</dd></div><div><dt>Prodeje a celková hodnota</dt><dd>{{ analytics.journey.total_sales }} · {{ format_czk(analytics.journey.total_revenue) }} Kč</dd></div><div><dt>Výzvy a milníky</dt><dd>{{ analytics.journey.completed_challenges }} · {{ analytics.journey.unlocked_achievements }}</dd></div><div><dt>Nejsilnější měsíc</dt><dd>{{ analytics.journey.strongest_month.label ~ ' · ' ~ analytics.journey.strongest_month.sales ~ ' prodejů' if analytics.journey.strongest_month else 'Čeká na data' }}</dd></div><div><dt>Dlouhodobý průměr</dt><dd>{{ format_czk(analytics.journey.average_sale) }} Kč</dd></div></dl>{% else %}<p>Odemkne se na úrovni 8.</p>{% endif %}</article>
+                <article class="dash-card progress-reward-card final-challenge-card {{ 'is-locked' if effective_level < 9 else '' }}"><span>Úroveň 9</span><h3>Finální výzva</h3>{% if effective_level >= 9 %}<p>Dosáhni obou podmínek během jednoho pracovního týdne.</p><div class="final-condition"><div><span>20 prodejů</span><strong>{{ final_progress }}/{{ final_target }}</strong></div><div class="mini-progress"><i style="width: {{ final_percent }}%"></i></div></div><div class="final-condition"><div><span>4 aktivní dny</span><strong>{{ final_days_progress }}/{{ final_days_target }}</strong></div><div class="mini-progress"><i style="width: {{ final_days_percent }}%"></i></div></div>{% else %}<p>Odemkne se na úrovni 9.</p>{% endif %}</article>
+                <article class="dash-card progress-reward-card {{ 'is-locked' if effective_level < 10 else '' }}"><span>Úroveň 10</span><h3>Velká pochvala</h3>{% if effective_level >= 10 %}<p>Závěrečná stránka je připravená.</p><a class="progress-action-link" href="{{ url_for('progress_finale') }}">Otevřít závěrečnou stránku</a>{% else %}<p>Odemkne se na úrovni 10.</p>{% endif %}</article>
+            </div>
+        </section>
+
+        <footer class="creator-signature dashboard-signature">Made by Honzi</footer>
+    </main>
+</div>
+{% endblock %}

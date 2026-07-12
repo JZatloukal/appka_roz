@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Závěrečná pochvala{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+    {% include "_sidebar.html" %}
+    <main class="dash-main feature-page">
+        <section class="progress-finale">
+            <span>Úroveň 10 · Celá cesta</span>
+            <h1>Tohle sis zasloužila.</h1>
+            <p class="progress-finale-subtitle">Jsi šikula!</p>
+            <div class="progress-finale-stats"><div><strong>{{ total_sales }}</strong><span>prodejů</span></div><div><strong>{{ format_czk(total_revenue) }} Kč</strong><span>celková hodnota</span></div><div><strong>{{ streak }}</strong><span>dnů v sérii</span></div></div>
+
+            <div class="sunflower-stage" data-sunflower-stage aria-live="polite">
+                <div class="sunflower-glow"></div>
+                <svg class="sunflower-art" viewBox="0 0 520 560" role="img" aria-label="Rostoucí slunečnice">
+                    <defs>
+                        <linearGradient id="stemGradient" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#34753d"/><stop offset="1" stop-color="#72ad55"/></linearGradient>
+                        <radialGradient id="sunflowerCenter"><stop offset="0" stop-color="#7d4a19"/><stop offset=".62" stop-color="#55300f"/><stop offset="1" stop-color="#2e1908"/></radialGradient>
+                        <linearGradient id="petalGradient" x1=".2" y1="0" x2=".8" y2="1"><stop stop-color="#ffe56f"/><stop offset=".55" stop-color="#f7b928"/><stop offset="1" stop-color="#dc7d10"/></linearGradient>
+                    </defs>
+                    <ellipse class="sunflower-shadow" cx="260" cy="530" rx="92" ry="15"/>
+                    <path class="sunflower-stem" d="M260 530 C246 445 276 364 257 271 C248 227 258 191 260 161"/>
+                    <path class="sunflower-leaf leaf-left" d="M252 394 C193 349 145 365 128 414 C174 429 220 425 252 394Z"/>
+                    <path class="sunflower-leaf leaf-right" d="M264 342 C308 286 362 297 385 342 C351 375 302 377 264 342Z"/>
+                    <g transform="translate(260 154)">
+                        <g class="sunflower-bloom">
+                            <g class="petal-ring petal-ring-back">
+                                {% for angle in range(0, 360, 20) %}<ellipse class="sunflower-petal" rx="19" ry="75" cy="-74" transform="rotate({{ angle }})"/>{% endfor %}
+                            </g>
+                            <g class="petal-ring petal-ring-front">
+                                {% for angle in range(10, 370, 20) %}<ellipse class="sunflower-petal inner" rx="16" ry="59" cy="-60" transform="rotate({{ angle }})"/>{% endfor %}
+                            </g>
+                            <circle class="sunflower-center" r="67"/>
+                            <g class="sunflower-seeds">
+                                {% for angle in range(0, 360, 30) %}<circle cx="0" cy="-43" r="4" transform="rotate({{ angle }})"/>{% endfor %}
+                                {% for angle in range(0, 360, 45) %}<circle cx="0" cy="-25" r="3" transform="rotate({{ angle }})"/>{% endfor %}
+                            </g>
+                        </g>
+                    </g>
+                </svg>
+                <p class="sunflower-message">Odměna je tvoje.</p>
+            </div>
+
+            <button class="dash-primary-button sunflower-trigger" type="button" data-sunflower-trigger>Převzít odměnu</button>
+            <a class="progress-finale-back" href="{{ url_for('progress_page') }}">Zpět na Postup</a>
+        </section>
+        <footer class="creator-signature dashboard-signature">Made by Honzi</footer>
+    </main>
+</div>
+<script>
+    const sunflowerStage = document.querySelector('[data-sunflower-stage]');
+    const sunflowerTrigger = document.querySelector('[data-sunflower-trigger]');
+    sunflowerTrigger.addEventListener('click', () => {
+        sunflowerStage.classList.remove('is-blooming');
+        void sunflowerStage.offsetWidth;
+        sunflowerStage.classList.add('is-blooming');
+        sunflowerTrigger.textContent = 'Odměna převzata';
+        sunflowerTrigger.disabled = true;
+    });
+</script>
+{% endblock %}

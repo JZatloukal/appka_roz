@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Přihlášení – Prodejní přehled{% endblock %}
+{% block content %}
+<div class="page login-page">
+    <section class="login-hero">
+        <div class="login-hero-shade"></div>
+        <div class="login-hero-content">
+            <div class="login-hero-copy">
+                <p class="login-kicker">Denní progress</p>
+                <h1>Každý prodej<br>si zaslouží<br><em>reakci.</em></h1>
+                <div class="login-accent-line"></div>
+                <p class="login-intro">Zaznamenej prodej, sleduj svůj postup a nech se pochválit.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="login-panel">
+        <div class="login-panel-content">
+            <p class="login-eyebrow">Vítej zpět</p>
+            <p class="login-welcome-copy">Pokračuj tam, kde jsi skončila.</p>
+
+            {% if error %}
+                {% set toast_items = [{'type': 'error', 'icon': 'warning', 'title': 'Přihlášení se nepovedlo.', 'text': error}] %}
+                {% include "_toasts.html" %}
+            {% endif %}
+
+            <form method="post" class="login-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ next_url }}">
+                <div class="login-field">
+                    <label for="username">Uživatel</label>
+                    <div class="login-input-wrap">
+                        <span aria-hidden="true">✿</span>
+                        <input id="username" name="username" autocomplete="username">
+                    </div>
+                </div>
+                <div class="login-field">
+                    <label for="password">Heslo</label>
+                    <div class="login-input-wrap">
+                        <span aria-hidden="true">✱</span>
+                        <input id="password" name="password" type="password" autocomplete="current-password">
+                    </div>
+                </div>
+                <button class="btn login-submit" type="submit">
+                    Pokračovat do přehledu <span></span>
+                </button>
+            </form>
+
+            <footer class="creator-signature login-signature">Made by Honzi</footer>
+        </div>
+    </section>
+</div>
+{% endblock %}

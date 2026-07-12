@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% from "_ui_icons.html" import icon as ui_icon %}
+{% block title %}Přehled{% endblock %}
+{% block content %}
+<div class="dashboard-shell">
+    {% include "_sidebar.html" %}
+    <main class="dash-main">
+        <header class="dash-header">
+            <div>
+                <h1>Vítej zpět, Týnuš</h1>
+                <p>Zaznamenej dnešní prodej a sleduj svůj postup.</p>
+            </div>
+        </header>
+
+        {% set toasts = namespace(items=[]) %}
+        {% if session.pop('last_sale_added', False) %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'success', 'title': 'Prodej je zapsaný.', 'text': 'Výsledek byl přidán do přehledu.'}] %}
+        {% endif %}
+        {% if session.pop('last_sale_deleted', False) %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'success', 'title': 'Záznam byl odstraněn.', 'text': 'Přehled byl přepočítán.'}] %}
+        {% endif %}
+        {% if session.pop('weekend_sale_blocked', False) or not is_workday_today %}
+            {% set toasts.items = toasts.items + [{'type': 'info', 'icon': 'weekend', 'title': 'Víkendový režim.', 'text': 'Prodeje lze zapisovat od pondělí do pátku.'}] %}
+        {% endif %}
+        {% set new_challenges = session.pop('new_challenges', []) %}
+        {% if new_challenges %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'challenge', 'title': 'Výzva splněna.', 'text': new_challenges | join(', ')}] %}
+        {% endif %}
+        {% set unlocked_reward = session.pop('reward_unlocked', None) %}
+        {% if unlocked_reward %}
+            {% set toasts.items = toasts.items + [{'type': 'success', 'icon': 'reward', 'title': 'Nová odměna odemčena.', 'text': unlocked_reward}] %}
+        {% endif %}
+        {% set toast_items = toasts.items %}
+        {% include "_toasts.html" %}
+
+        {% if new_achievements %}
+            {% set unlocked_badge = achievement_catalog[new_achievements[0]] %}
+            <div class="achievement-celebration" id="achievement-celebration" role="dialog" aria-modal="true" aria-labelledby="celebration-title">
+                <div class="celebration-card">
+                    <button type="button" class="celebration-close" onclick="document.getElementById('achievement-celebration').remove()" aria-label="Zavřít">×</button>
+                    <span class="celebration-kicker">Nový moment odemčen</span>
+                    <div class="achievement-medal theme-{{ unlocked_badge.theme }} is-unlocked">
+                        <span class="medal-mark-text">{{ unlocked_badge.mark }}</span>
+                    </div>
+                    <h2 id="celebration-title">{{ unlocked_badge.label }}</h2>
+                    <p>{{ unlocked_badge.description }}</p>
+                    <strong>+{{ unlocked_badge.xp }} bonusových XP</strong>
+                    {% if new_achievements|length > 1 %}
+                        <small>A ještě {{ new_achievements|length - 1 }} další.</small>
+                    {% endif %}
+                    <a class="dash-primary-button" href="{{ url_for('challenges_page') }}#moments">Zobrazit sbírku</a>
+                </div>
+            </div>
+        {% endif %}
+
+        <section class="dash-hero home-hero {{ 'voice-ready' if voice_clip else '' }}">
+            <div class="dash-hero-image" aria-hidden="true"></div>
+            <div class="dash-hero-copy">
+                <span class="dash-hero-eyebrow">{{ 'Pochvala je připravená' if voice_clip else 'Dneska to rozjedeme' }}</span>
+                <h2>Každý úspěch<br>si zaslouží <em>uznání.</em></h2>
+                <p>Začni jedním záznamem. Každý další krok se počítá.</p>
+                {% if voice_clip %}
+                    <div class="hero-action-row">
+                        <button class="dash-primary-button voice-trigger" type="button" data-voice-play>▶ Přehrát pochvalu</button>
+                        <span class="voice-remaining" data-voice-remaining>{{ voice_plays_remaining }} {{ 'přehrání zbývá' if voice_plays_remaining == 1 else 'přehrání zbývají' }}</span>
+                        {% if is_workday_today %}
+                            <a class="dash-secondary-link" href="#sales-form">Zapsat další prodej</a>
+                        {% endif %}
+                    </div>
+                    <div class="hero-voice-line" aria-hidden="true"><i data-voice-progress></i></div>
+                {% elif is_workday_today %}
+                    <div class="hero-unlock-progress">
+                        <div class="hero-unlock-copy">
+                            <span>Další hlasová pochvala</span>
+                            <strong>
+                                {% if voice_unlock_progress.remaining == 1 %}
+                                    Zbývá 1 prodej
+                                {% else %}
+                                    Zbývají {{ voice_unlock_progress.remaining }} prodeje
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div class="hero-voice-line is-locked" aria-hidden="true">
+                            <i style="width: {{ voice_unlock_progress.percent }}%"></i>
+                        </div>
+                    </div>
+                    <a class="dash-primary-button" href="#sales-form">Zapsat prodej</a>
+                {% else %}
+                    <span class="dash-primary-button dash-button-disabled">Zápis pokračuje v pondělí</span>
+                {% endif %}
+            </div>
+            {% if voice_clip %}
+                <audio id="voice-audio" preload="auto" src="{{ url_for('voice_audio') }}"></audio>
+            {% endif %}
+        </section>
+
+        <section class="home-summary-grid single-card">
+            <article class="dash-card daily-summary">
+                <div class="dash-section-title">
+                    <div><span>Dnes</span><p>Denní cíl: {{ daily_goal }} prodejů</p></div>
+                    <strong>{{ today_sales }}/{{ daily_goal }}</strong>
+                </div>
+                <div class="dash-xp-bar"><span style="width: {{ daily_progress }}%"></span></div>
+                <p>
+                    {% if remaining_sales %}
+                        {% if is_workday_today %}Do cíle zbývá {{ remaining_sales }} prodejů.{% else %}Denní cíl je o víkendu pozastavený.{% endif %}
+                    {% else %}
+                        Dnešní cíl je splněný.
+                    {% endif %}
+                </p>
+            </article>
+        </section>
+
+        <section class="dash-lower-grid home-lower-grid">
+            <article class="dash-card dash-form-card" id="sales-form">
+                <div class="dash-section-title">
+                    <div><span>Rychlý zápis</span><p>Vyplň základní údaje k prodeji.</p></div>
+                </div>
+                <form method="post" action="{{ url_for('add_sale') }}" class="dash-sales-form">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <div class="dash-form-row dash-form-row-time">
+                        <div>
+                            <label for="customer">Klient nebo objednávka</label>
+                            <input id="customer" name="customer" placeholder="Např. Objednávka #1024" {{ 'disabled' if not is_workday_today else '' }}>
+                        </div>
+                        <div>
+                            <label for="amount">Hodnota prodeje v Kč</label>
+                            <input id="amount" name="amount" type="number" min="1" placeholder="12 500" required {{ 'disabled' if not is_workday_today else '' }}>
+                        </div>
+                        <div>
+                            <label for="sale_time">Čas prodeje</label>
+                            <input id="sale_time" type="time" value="{{ current_time }}" readonly aria-readonly="true">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="note">Poznámka (volitelně)</label>
+                        <textarea id="note" name="note" rows="3" placeholder="Volitelně: poznámka k prodeji..." {{ 'disabled' if not is_workday_today else '' }}></textarea>
+                    </div>
+                    <button class="dash-primary-button dash-submit" type="submit" {{ 'disabled' if not is_workday_today else '' }}>
+                        {{ 'Zapsat prodej' if is_workday_today else 'Zápis je o víkendu uzamčený' }}
+                    </button>
+                </form>
+            </article>
+
+            <article class="dash-card dash-history-card">
+                <div class="dash-section-title dash-history-heading">
+                    <div><span>Poslední aktivita</span><p>Nejnovější zaznamenané prodeje</p></div>
+                    <small>{{ total_sales }} celkem</small>
+                </div>
+                {% if sales %}
+                    <div class="dash-sales-list">
+                        {% for sale in sales %}
+                            <div class="dash-sale">
+                                <span class="dash-sale-check">✓</span>
+                                <div class="dash-sale-copy">
+                                    <div><strong>{{ sale.customer }}</strong><time>{{ sale.created_at.strftime('%H:%M') }}</time></div>
+                                    <p>{{ sale.note or 'Prodej byl úspěšně zaznamenán.' }}</p>
+                                </div>
+                                <strong class="dash-sale-amount">+{{ format_czk(sale.amount) }} Kč</strong>
+                                <form method="post" action="{{ url_for('delete_sale', sale_id=sale.id) }}">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                                    <button class="dash-delete" type="submit" aria-label="Smazat prodej">×</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <a class="dash-text-link" href="{{ url_for('sales_page') }}">Zobrazit všechny prodeje →</a>
+                {% else %}
+                    <div class="dash-empty"><strong>Zatím tu nejsou žádné prodeje.</strong><p>První záznam se objeví právě tady.</p></div>
+                {% endif %}
+            </article>
+        </section>
+        <footer class="creator-signature dashboard-signature">Made by Honzi</footer>
+    </main>
+</div>
+<script>
+    (() => {
+        const timeField = document.getElementById("sale_time");
+        if (!timeField) return;
+
+        const updateCurrentTime = () => {
+            const now = new Date();
+            timeField.value = [
+                String(now.getHours()).padStart(2, "0"),
+                String(now.getMinutes()).padStart(2, "0")
+            ].join(":");
+        };
+
+        updateCurrentTime();
+        window.setInterval(updateCurrentTime, 30000);
+    })();
+
+    (() => {
+        const audio = document.getElementById("voice-audio");
+        if (!audio) return;
+
+        const playButtons = [...document.querySelectorAll("[data-voice-play]")];
+        const progressBar = document.querySelector("[data-voice-progress]");
+        const remainingLabel = document.querySelector("[data-voice-remaining]");
+
+        const setPlayingState = (isPlaying) => {
+            playButtons.forEach((button) => button.classList.toggle("is-playing", isPlaying));
+            playButtons.forEach((button) => {
+                button.textContent = isPlaying ? "Pozastavit pochvalu" : "▶ Přehrát pochvalu";
+            });
+        };
+
+        const lockVoice = () => {
+            audio.pause();
+            playButtons.forEach((button) => {
+                button.disabled = true;
+                button.classList.add("is-locked");
+                button.textContent = "Pochvala přehrána";
+            });
+            if (remainingLabel) remainingLabel.textContent = "Pochvala se odemkne po dalším prodeji";
+        };
+
+        playButtons.forEach((button) => {
+            button.addEventListener("click", async () => {
+                try {
+                    if (audio.paused) {
+                        await audio.play();
+                    } else {
+                        audio.pause();
+                    }
+                } catch (error) {
+                    console.warn("Audio playback failed", error);
+                }
+            });
+        });
+
+        audio.addEventListener("play", () => setPlayingState(true));
+        audio.addEventListener("pause", () => setPlayingState(false));
+        audio.addEventListener("ended", async () => {
+            setPlayingState(false);
+            if (progressBar) progressBar.style.width = "100%";
+            try {
+                const response = await fetch("{{ url_for('voice_played') }}", {
+                    method: "POST",
+                    headers: {
+                        "X-Requested-With": "fetch",
+                        "X-CSRFToken": "{{ csrf_token() }}"
+                    }
+                });
+                const data = await response.json();
+                if (remainingLabel) {
+                    remainingLabel.textContent = data.remaining === 1
+                        ? "1 přehrání zbývá"
+                        : `${data.remaining} přehrání zbývají`;
+                }
+                if (data.locked) lockVoice();
+            } catch (error) {
+                console.warn("Voice play count failed", error);
+            }
+        });
+        audio.addEventListener("timeupdate", () => {
+            const duration = audio.duration || 0;
+            const progress = duration ? Math.min(100, (audio.currentTime / duration) * 100) : 0;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+        });
+    })();
+</script>
+{% endblock %}

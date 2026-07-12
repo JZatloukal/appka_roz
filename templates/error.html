@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} – {{ title }}{% endblock %}
+{% block content %}
+<main class="error-page">
+    <section class="error-card">
+        <span>{{ code }}</span>
+        <h1>{{ title }}</h1>
+        <p>{{ text }}</p>
+        <a class="dash-primary-button" href="{{ action_url }}">{{ action_label }}</a>
+    </section>
+</main>
+{% endblock %}

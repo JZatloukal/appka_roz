@@ -1,0 +1,19 @@
+{% from "_ui_icons.html" import icon as ui_icon %}
+{% if toast_items %}
+    <div class="toast-stack" data-toast-stack aria-live="polite" aria-atomic="false">
+        {% for toast in toast_items %}
+            <div class="dash-toast toast-{{ toast.type | default('info') }}" data-toast>
+                <span class="dash-toast-icon">
+                    {{ ui_icon(toast.icon | default('success')) }}
+                </span>
+                <div>
+                    <strong>{{ toast.title }}</strong>
+                    {% if toast.text %}
+                        <span>{{ toast.text }}</span>
+                    {% endif %}
+                </div>
+                <button type="button" class="toast-close" data-toast-close aria-label="Zavřít notifikaci">×</button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
