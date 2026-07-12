@@ -76,6 +76,7 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=env_bool("SESSION_COOKIE_SECURE", IS_PRODUCTION),
+    SEND_FILE_MAX_AGE_DEFAULT=3600,
 )
 
 
@@ -2465,7 +2466,10 @@ def voice_audio():
     if not file_path.exists() or not file_path.is_file():
         abort(404)
 
-    return send_file(file_path, conditional=True)
+    # stejna URL servuje pokazde jiny klip, cache by prehravala stary
+    response = send_file(file_path, conditional=True)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/voice-played", methods=["POST"])

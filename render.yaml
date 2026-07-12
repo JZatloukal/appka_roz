@@ -5,8 +5,9 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     # presne 1 worker: appka drzi data v pameti procesu (SALES apod.),
-    # vic workeru by melo kazdy svou kopii a data by se rozjela
-    startCommand: gunicorn main:app --workers 1 --bind 0.0.0.0:$PORT
+    # vic workeru by melo kazdy svou kopii a data by se rozjela;
+    # vlakna resi soubezne pozadavky (HTML + CSS + obrazky najednou)
+    startCommand: gunicorn main:app --workers 1 --threads 8 --bind 0.0.0.0:$PORT
     healthCheckPath: /login
     envVars:
       - key: PYTHON_VERSION
